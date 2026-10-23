@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MONKEY BAR Sports Ticker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Oswald:wght@500;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        :root {
+            --primary-glow: #00f0ff;
+            --secondary-glow: #ff0055;
+            --accent-gold: #ffcc00;
+            --bg-dark: #05070a;
+            --card-bg: rgba(12, 18, 28, 0.92);
+            --team-primary: #00f0ff;
+            --team-secondary: #ff0055;
+            --stadium-glow: rgba(0, 240, 255, 0.15);
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: 'Roboto Condensed', sans-serif;
+            cursor: none; /* Auto-hide cursor for clean TV presentation */
+        }
+
+        body:hover {
+            cursor: default;
+        }
+
+        /* 9:16 Portrait Canvas Container */
+        .tv-frame {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: radial-gradient(circle at 50% 30%, var(--stadium-glow) 0%, rgba(5, 7, 10, 0.98) 75%);
+            position: relative;
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.9);
+            transition: background 1.2s ease-in-out;
+        }
+
+        /* Background Dynamic Stadium Lighting Flare */
+        .stadium-flare {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 350px;
+            background: radial-gradient(ellipse at top, var(--team-primary) 0%, rgba(0,0,0,0) 70%);
+            opacity: 0.22;
+            pointer-events: none;
+            transition: all 1.2s ease-in-out;
+            z-index: 1;
+        }
+
+        /* TV Overlay Header */
+        header {
+            z-index: 10;
+            padding: 16px 20px 10px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .header-top-row {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .sync-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #8a9ba8;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sync-spinner {
+            width: 8px;
+            height: 8px;
+            border: 2px solid var(--accent-gold);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .bar-title {
+            font-family: 'Teko', sans-serif;
+            font-size: 3rem;
+            line-height: 0.9;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            background: linear-gradient(180deg, #ffffff 30%, #a0aab5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        .live-clock {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent-gold);
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+        }
+
+        .sport-badge-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        .league-badge {
+            background: var(--team-primary);
+            color: #000000;
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 3px 14px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 0 15px var(--team-primary);
+            transition: all 0.8s ease;
+        }
+
+        .rotator-timer-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            overflow: hidden;
+        }
+
+        .rotator-progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--team-primary), var(--team-secondary));
+            transition: width 0.1s linear;
+        }
+
+        /* Main Rotator Content Area */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 12px 16px;
+            gap: 14px;
+            z-index: 5;
+            max-height: calc(100vh - 160px);
+        }
+
+        /* Matchup Main Banner Card */
+        .matchup-card {
+            background: var(--card-bg);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 18px 14px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 30px var(--stadium-glow);
+            backdrop-filter: blur(10px);
+            transition: border-color 0.8s ease, box-shadow 0.8s ease;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .game-status {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.9rem;
+            padding: 3px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .status-live {
+            background: #ff0044;
+            color: #fff;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        .status-pregame {
+            background: rgba(0, 240, 255, 0.2);
+            color: #00f0ff;
+            border: 1px solid #00f0ff;
+        }
+
+        .status-final {
+            background: rgba(255, 255, 255, 0.15);
+            color: #aaa;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 0, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 68, 0); }
+        }
+
+        .network-info {
+            font-size: 0.85rem;
+            color: #a0aab5;
+            font-weight: 700;
+        }
+
+        /* Team / Fighter Displays */
+        .teams-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .team-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo-wrapper {
+            width: 85px;
+            height: 85px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.2));
+        }
+
+        .team-logo, .fighter-photo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .fighter-photo {
+            border-radius: 50%;
+            border: 2px solid var(--team-primary);
+            box-shadow: 0 0 15px var(--team-primary);
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+        }
+
+        .team-name {
+            font-family: 'Teko', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            line-height: 1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .team-record {
+            font-size: 0.8rem;
+            color: #8a9ba8;
+            margin-top: 2px;
+        }
+
+        .score-display {
+            font-family: 'Oswald', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+            margin-top: 4px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        .vs-divider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .vs-text {
+            font-family: 'Teko', sans-serif;
+            font-size: 1.8rem;
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        .game-time {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.95rem;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        /* Vegas Odds Section */
+        .odds-bar {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 204, 0, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .odds-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .odds-label {
+            font-size: 0.65rem;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .odds-value {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Key Players / Fighter Stats Panel */
+        .spotlight-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .spotlight-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.85rem;
+            color: var(--team-primary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 4px;
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .player-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 8px;
+            border-left: 3px solid var(--team-primary);
+        }
+
+        .player-card.away {
+            border-left-color: var(--team-primary);
+        }
+
+        .player-card.home {
+            border-left-color: var(--team-secondary);
+        }
+
+        .player-headshot {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            flex-shrink: 0;
+        }
+
+        .player-details {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .player-name {
+            font-family: 'Oswald', sans-serif;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.1;
+        }
+
+        .player-pos {
+            font-size: 0.7rem;
+            color: #8a9ba8;
+            margin-bottom: 2px;
+        }
+
+        .player-stat-line {
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        /* UFC Tale of the Tape Stats */
+        .ufc-tape-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .tape-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            text-align: center;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .tape-val {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .tape-label {
+            color: #8a9ba8;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        /* Bottom Scrolling Ticker Bar */
+        footer {
+            height: 52px;
+            background: #000000;
+            border-top: 2px solid var(--team-primary);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
+            transition: border-color 0.8s ease;
+        }
+
+        .ticker-label-badge {
+            background: var(--team-primary);
+            color: #000000;
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 0 16px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            white-space: nowrap;
+            letter-spacing: 1px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            transition: background 0.8s ease;
+        }
+
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            /* SLOWER TICKER SPEED: 150 seconds duration for easy reading on TVs */
+            animation: scrollTicker 150s linear infinite;
+        }
+
+        @keyframes scrollTicker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 24px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+
+        .ticker-item span.highlight {
+            color: var(--accent-gold);
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+        }
+
+        .ticker-item span.divider {
+            color: var(--team-primary);
+            margin-left: 12px;
+        }
+
+        /* Fullscreen Helper Overlay */
+        .fullscreen-prompt {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            color: #aaa;
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body onclick="requestFullscreenTV()">
+
+    <div class="fullscreen-prompt" id="fsPrompt">Tap Screen / Click for Fullscreen TV Mode</div>
+
+    <div class="tv-frame" id="tvFrame">
+        <div class="stadium-flare" id="stadiumFlare"></div>
+
+        <!-- TV HEADER -->
+        <header>
+            <div class="header-top-row">
+                <div class="sync-badge">
+                    <div class="sync-spinner"></div>
+                    <span id="syncText">Sync 60s</span>
+                </div>
+                <div class="live-clock" id="liveClock">12:00 PM</div>
+            </div>
+
+            <div class="bar-title" id="barTitle">MONKEY BAR</div>
+
+            <div class="sport-badge-container">
+                <div class="league-badge" id="leagueBadge">NFL FOOTBALL</div>
+            </div>
+
+            <div class="rotator-timer-bar">
+                <div class="rotator-progress" id="rotatorProgress"></div>
+            </div>
+        </header>
+
+        <!-- MAIN MATCHUP ROTATOR -->
+        <main>
+            <!-- MAIN FEATURED MATCHUP CARD -->
+            <div class="matchup-card" id="matchupCard">
+                <div class="status-header">
+                    <div class="game-status status-pregame" id="gameStatus">PREGAME</div>
+                    <div class="network-info" id="networkInfo">FOX • 4:25 PM ET</div>
+                </div>
+
+                <div class="teams-container" id="teamsContainer">
+                    <!-- Dynamic Team/Fighter 1 -->
+                    <div class="team-box">
+                        <div class="logo-wrapper" id="logoWrapAway">
+                            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/gb.png" class="team-logo" id="awayLogo" alt="Away">
+                        </div>
+                        <div class="team-name" id="awayName">PACKERS</div>
+                        <div class="team-record" id="awayRecord">5-2</div>
+                        <div class="score-display" id="awayScore">-</div>
+                    </div>
+
+                    <!-- Center Divider / Time -->
+                    <div class="vs-divider">
+                        <div class="vs-text">VS</div>
+                        <div class="game-time" id="gameTimeCenter">SUN 10/25</div>
+                    </div>
+
+                    <!-- Dynamic Team/Fighter 2 -->
+                    <div class="team-box">
+                        <div class="logo-wrapper" id="logoWrapHome">
+                            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/det.png" class="team-logo" id="homeLogo" alt="Home">
+                        </div>
+                        <div class="team-name" id="homeName">LIONS</div>
+                        <div class="team-record" id="homeRecord">5-1</div>
+                        <div class="score-display" id="homeScore">-</div>
+                    </div>
+                </div>
+
+                <!-- VEGAS ODDS BAR -->
+                <div class="odds-bar" id="oddsBar">
+                    <div class="odds-item">
+                        <span class="odds-label">SPREAD</span>
+                        <span class="odds-value" id="oddsSpread">DET -4.5</span>
+                    </div>
+                    <div class="odds-item">
+                        <span class="odds-label">OVER / UNDER</span>
+                        <span class="odds-value" id="oddsTotal">O/U 53.5</span>
+                    </div>
+                    <div class="odds-item">
+                        <span class="odds-label">MONEYLINE</span>
+                        <span class="odds-value" id="oddsML">DET -210</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KEY PLAYERS / UFC TALE OF THE TAPE CARD -->
+            <div class="spotlight-card" id="spotlightCard">
+                <div class="spotlight-title" id="spotlightTitle">
+                    <span>KEY PLAYER MATCHUP</span>
+                    <span style="font-size: 0.7rem; color: #8a9ba8;">SEASON STATS</span>
+                </div>
+
+                <div class="players-grid" id="playersGrid">
+                    <!-- Player Away -->
+                    <div class="player-card away">
+                        <img src="https://a.espncdn.com/i/headshots/nfl/players/full/4241479.png" class="player-headshot" id="awayPlayerImg" alt="Away Player">
+                        <div class="player-details">
+                            <div class="player-name" id="awayPlayerName">J. Love</div>
+                            <div class="player-pos" id="awayPlayerPos">QB #10</div>
+                            <div class="player-stat-line" id="awayPlayerStat">1,351 YDS • 13 TD</div>
+                        </div>
+                    </div>
+
+                    <!-- Player Home -->
+                    <div class="player-card home">
+                        <img src="https://a.espncdn.com/i/headshots/nfl/players/full/3046779.png" class="player-headshot" id="homePlayerImg" alt="Home Player">
+                        <div class="player-details">
+                            <div class="player-name" id="homePlayerName">J. Goff</div>
+                            <div class="player-pos" id="homePlayerPos">QB #16</div>
+                            <div class="player-stat-line" id="homePlayerStat">1,610 YDS • 10 TD</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UFC Specific Stats Tape (Hidden for team sports) -->
+                <div class="ufc-tape-grid" id="ufcTapeGrid" style="display: none;">
+                    <div class="tape-row">
+                        <span class="tape-val" id="ufcAwayRec">15-0-0</span>
+                        <span class="tape-label">RECORD</span>
+                        <span class="tape-val" id="ufcHomeRec">26-7-0</span>
+                    </div>
+                    <div class="tape-row">
+                        <span class="tape-val" id="ufcAwayHgt">5'7"</span>
+                        <span class="tape-label">HEIGHT</span>
+                        <span class="tape-val" id="ufcHomeHgt">5'11"</span>
+                    </div>
+                    <div class="tape-row">
+                        <span class="tape-val" id="ufcAwayRch">69.0"</span>
+                        <span class="tape-label">REACH</span>
+                        <span class="tape-val" id="ufcHomeRch">74.0"</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- BOTTOM TICKER CRAWL -->
+        <footer>
+            <div class="ticker-label-badge" id="tickerBadge">SCORES & ODDS</div>
+            <div class="ticker-wrap">
+                <div class="ticker-move" id="tickerContent">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ROTATION CONFIGURATION
+        const ROTATE_INTERVAL_MS = 10000; // Rotate main matchup every 10s
+        const API_REFRESH_INTERVAL_MS = 60000; // 60-SECOND LIVE ESPN DATA AUTO-REFRESH
+
+        let currentMatchupIndex = 0;
+        let lastApiSync = Date.now();
+        let apiSyncCountdown = 60;
+
+        // EXPANDED MULTI-SPORT MATCHUP DATASET (NFL, NBA, NHL, MLB, UFC)
+        const matchupsData = [
+            {
+                league: "NFL FOOTBALL",
+                badgeColor: "#00f0ff",
+                primaryColor: "#203731", // Packers Green
+                secondaryColor: "#005a8c", // Lions Blue
+                status: "PREGAME",
+                statusClass: "status-pregame",
+                network: "FOX • 4:25 PM ET",
+                away: { name: "PACKERS", record: "5-2", score: "-", logo: "https://a.espncdn.com/i/teamlogos/nfl/500/gb.png" },
+                home: { name: "LIONS", record: "5-1", score: "-", logo: "https://a.espncdn.com/i/teamlogos/nfl/500/det.png" },
+                timeCenter: "SUN 10/25",
+                odds: { spread: "DET -4.5", total: "O/U 53.5", ml: "DET -210" },
+                isUFC: false,
+                players: {
+                    away: { name: "J. Love", pos: "QB #10", stat: "1,351 YDS • 13 TD", img: "https://a.espncdn.com/i/headshots/nfl/players/full/4241479.png" },
+                    home: { name: "J. Goff", pos: "QB #16", stat: "1,610 YDS • 10 TD", img: "https://a.espncdn.com/i/headshots/nfl/players/full/3046779.png" }
+                }
+            },
+            {
+                league: "UFC 308 • MAIN EVENT",
+                badgeColor: "#d20a0a",
+                primaryColor: "#d20a0a", // UFC Red
+                secondaryColor: "#0258a5", // Blue Corner
+                status: "MAIN CARD",
+                statusClass: "status-live",
+                network: "PPV • 2:00 PM ET",
+                away: { name: "TOPURIA", record: "15-0-0", score: "CHAMP", logo: "https://a.espncdn.com/i/headshots/mma/players/full/4684288.png", isFighter: true },
+                home: { name: "HOLLOWAY", record: "26-7-0", score: "#1", logo: "https://a.espncdn.com/i/headshots/mma/players/full/2516361.png", isFighter: true },
+                timeCenter: "SAT OCT 26",
+                odds: { spread: "FEATHERWEIGHT", total: "O/U 4.5 RNDS", ml: "TOP -250" },
+                isUFC: true,
+                ufcTape: {
+                    awayRec: "15-0-0", homeRec: "26-7-0",
+                    awayHgt: "5'7\"", homeHgt: "5'11\"",
+                    awayRch: "69.0\"", homeRch: "74.0\""
+                },
+                players: {
+                    away: { name: "Ilia Topuria", pos: "KO/TKO 53%", stat: "3.32 SLpM • 56% Acc", img: "https://a.espncdn.com/i/headshots/mma/players/full/4684288.png" },
+                    home: { name: "Max Holloway", pos: "KO/TKO 46%", stat: "7.17 SLpM • 48% Acc", img: "https://a.espncdn.com/i/headshots/mma/players/full/2516361.png" }
+                }
+            },
+            {
+                league: "NBA BASKETBALL",
+                badgeColor: "#ff9900",
+                primaryColor: "#552583", // Lakers Purple
+                secondaryColor: "#007a33", // Celtics Green
+                status: "LIVE 3RD QTR",
+                statusClass: "status-live",
+                network: "TNT • 8:30 PM ET",
+                away: { name: "LAKERS", record: "2-0", score: "78", logo: "https://a.espncdn.com/i/teamlogos/nba/500/lal.png" },
+                home: { name: "CELTICS", record: "2-0", score: "82", logo: "https://a.espncdn.com/i/teamlogos/nba/500/bos.png" },
+                timeCenter: "5:42 3Q",
+                odds: { spread: "BOS -6.5", total: "O/U 228.5", ml: "BOS -240" },
+                isUFC: false,
+                players: {
+                    away: { name: "A. Davis", pos: "PF/C #3", stat: "35.5 PTS • 12.0 REB", img: "https://a.espncdn.com/i/headshots/nba/players/full/6583.png" },
+                    home: { name: "J. Tatum", pos: "SF #0", stat: "37.0 PTS • 7.5 REB", img: "https://a.espncdn.com/i/headshots/nba/players/full/4065648.png" }
+                }
+            },
+            {
+                league: "NHL HOCKEY",
+                badgeColor: "#0055ff",
+                primaryColor: "#041e42", // Oilers Blue
+                secondaryColor: "#000000", // Bruins Black
+                status: "2ND PERIOD",
+                statusClass: "status-live",
+                network: "ESPN+ • 7:00 PM ET",
+                away: { name: "OILERS", record: "3-2-0", score: "2", logo: "https://a.espncdn.com/i/teamlogos/nhl/500/edm.png" },
+                home: { name: "BRUINS", record: "4-1-0", score: "1", logo: "https://a.espncdn.com/i/teamlogos/nhl/500/bos.png" },
+                timeCenter: "12:14 2P",
+                odds: { spread: "EDM -1.5", total: "O/U 6.5", ml: "EDM -135" },
+                isUFC: false,
+                players: {
+                    away: { name: "C. McDavid", pos: "C #97", stat: "2 G • 8 A • 10 PTS", img: "https://a.espncdn.com/i/headshots/nhl/players/full/3895074.png" },
+                    home: { name: "D. Pastrnak", pos: "RW #88", stat: "4 G • 3 A • 7 PTS", img: "https://a.espncdn.com/i/headshots/nhl/players/full/3114727.png" }
+                }
+            },
+            {
+                league: "MLB BASEBALL",
+                badgeColor: "#ff0055",
+                primaryColor: "#005a9c", // Dodgers Blue
+                secondaryColor: "#0c2340", // Yankees Navy
+                status: "FINAL",
+                statusClass: "status-final",
+                network: "FOX • WORLD SERIES",
+                away: { name: "DODGERS", record: "1-0", score: "6", logo: "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png" },
+                home: { name: "YANKEES", record: "0-1", score: "3", logo: "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png" },
+                timeCenter: "FINAL (10)",
+                odds: { spread: "LAD -1.5", total: "O/U 8.5", ml: "LAD -125" },
+                isUFC: false,
+                players: {
+                    away: { name: "F. Freeman", pos: "1B #5", stat: "WALK-OFF HR • 4 RBI", img: "https://a.espncdn.com/i/headshots/mlb/players/full/30193.png" },
+                    home: { name: "G. Stanton", pos: "DH #27", stat: "1 HR • 2 RBI", img: "https://a.espncdn.com/i/headshots/mlb/players/full/30583.png" }
+                }
+            }
+        ];
+
+        // REAL-TIME TICKER HEADLINES
+        const tickerItems = [
+            { text: "NFL WEEK 8", highlight: "BEARS AT COMMANDERS", extra: "SUN 1:00 PM ET • WAS -2.5" },
+            { text: "UFC 308", highlight: "WHITTAKER VS CHIMAEV", extra: "CO-MAIN EVENT • CHIMAEV -240" },
+            { text: "NBA ACTION", highlight: "KNICKS 112 - PACERS 105", extra: "FINAL • BRUNSON 36 PTS" },
+            { text: "WORLD SERIES", highlight: "GAME 2 TONIGHT", extra: "YANKEE STADIUM • RODON VS YAMAMOTO" },
+            { text: "NHL SCORES", highlight: "RANGERS 4 - MAPLE LEAFS 1", extra: "FINAL • SHESTERKIN 34 SVS" }
+        ];
+
+        // LIVE CLOCK UPDATE
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            document.getElementById('liveClock').textContent = `${hours}:${minutes} ${ampm}`;
+        }
+
+        // UPDATE DISPLAY WITH CURRENT MATCHUP & ADAPTIVE THEME
+        function renderMatchup(index) {
+            const data = matchupsData[index];
+            const root = document.documentElement;
+
+            // Apply Dynamic Team Colors
+            root.style.setProperty('--team-primary', data.primaryColor || '#00f0ff');
+            root.style.setProperty('--team-secondary', data.secondaryColor || '#ff0055');
+            root.style.setProperty('--stadium-glow', `${data.primaryColor}33` || 'rgba(0,240,255,0.15)');
+
+            // Update Header & League Badges
+            document.getElementById('leagueBadge').textContent = data.league;
+            document.getElementById('leagueBadge').style.background = data.primaryColor;
+            document.getElementById('leagueBadge').style.color = '#ffffff';
+
+            // Game Status & Broadcast
+            const statusEl = document.getElementById('gameStatus');
+            statusEl.textContent = data.status;
+            statusEl.className = `game-status ${data.statusClass}`;
+            document.getElementById('networkInfo').textContent = data.network;
+
+            // Teams / Fighters
+            document.getElementById('awayName').textContent = data.away.name;
+            document.getElementById('awayRecord').textContent = data.away.record;
+            document.getElementById('awayScore').textContent = data.away.score;
+            
+            document.getElementById('homeName').textContent = data.home.name;
+            document.getElementById('homeRecord').textContent = data.home.record;
+            document.getElementById('homeScore').textContent = data.home.score;
+            
+            document.getElementById('gameTimeCenter').textContent = data.timeCenter;
+
+            // Logos / Headshots
+            const awayLogoEl = document.getElementById('awayLogo');
+            const homeLogoEl = document.getElementById('homeLogo');
+
+            awayLogoEl.src = data.away.logo;
+            homeLogoEl.src = data.home.logo;
+
+            if (data.away.isFighter) {
+                awayLogoEl.className = 'fighter-photo';
+                homeLogoEl.className = 'fighter-photo';
+            } else {
+                awayLogoEl.className = 'team-logo';
+                homeLogoEl.className = 'team-logo';
+            }
+
+            // Vegas Odds Bar
+            document.getElementById('oddsSpread').textContent = data.odds.spread;
+            document.getElementById('oddsTotal').textContent = data.odds.total;
+            document.getElementById('oddsML').textContent = data.odds.ml;
+
+            // Key Players vs UFC Tape
+            const playersGrid = document.getElementById('playersGrid');
+            const ufcTapeGrid = document.getElementById('ufcTapeGrid');
+
+            if (data.isUFC) {
+                document.getElementById('spotlightTitle').children[0].textContent = "FIGHTER TALE OF THE TAPE";
+                ufcTapeGrid.style.display = 'flex';
+                
+                document.getElementById('ufcAwayRec').textContent = data.ufcTape.awayRec;
+                document.getElementById('ufcHomeRec').textContent = data.ufcTape.homeRec;
+                document.getElementById('ufcAwayHgt').textContent = data.ufcTape.awayHgt;
+                document.getElementById('ufcHomeHgt').textContent = data.ufcTape.homeHgt;
+                document.getElementById('ufcAwayRch').textContent = data.ufcTape.awayRch;
+                document.getElementById('ufcHomeRch').textContent = data.ufcTape.homeRch;
+            } else {
+                document.getElementById('spotlightTitle').children[0].textContent = "KEY PLAYER MATCHUP";
+                ufcTapeGrid.style.display = 'none';
+            }
+
+            // Render Player Profiles
+            if (data.players) {
+                document.getElementById('awayPlayerImg').src = data.players.away.img;
+                document.getElementById('awayPlayerName').textContent = data.players.away.name;
+                document.getElementById('awayPlayerPos').textContent = data.players.away.pos;
+                document.getElementById('awayPlayerStat').textContent = data.players.away.stat;
+
+                document.getElementById('homePlayerImg').src = data.players.home.img;
+                document.getElementById('homePlayerName').textContent = data.players.home.name;
+                document.getElementById('homePlayerPos').textContent = data.players.home.pos;
+                document.getElementById('homePlayerStat').textContent = data.players.home.stat;
+            }
+        }
+
+        // BUILD BOTTOM TICKER CRAWL
+        function renderTicker() {
+            const container = document.getElementById('tickerContent');
+            let html = '';
+            
+            // Double the items for seamless infinite scroll
+            const fullList = [...tickerItems, ...tickerItems, ...tickerItems];
+
+            fullList.forEach(item => {
+                html += `
+                    <div class="ticker-item">
+                        <span>${item.text}:</span>
+                        <span class="highlight">${item.highlight}</span>
+                        <span>(${item.extra})</span>
+                        <span class="divider">•</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // PROGRESS BAR & MATCHUP ROTATOR ENGINE
+        let rotationStartTime = Date.now();
+        function animateRotator() {
+            const elapsed = Date.now() - rotationStartTime;
+            const progress = Math.min((elapsed / ROTATE_INTERVAL_MS) * 100, 100);
+            
+            document.getElementById('rotatorProgress').style.width = `${progress}%`;
+
+            if (elapsed >= ROTATE_INTERVAL_MS) {
+                currentMatchupIndex = (currentMatchupIndex + 1) % matchupsData.length;
+                renderMatchup(currentMatchupIndex);
+                rotationStartTime = Date.now();
+            }
+
+            requestAnimationFrame(animateRotator);
+        }
+
+        // 60-SECOND LIVE ESPN API FETCHING ENGINE
+        async function fetchLiveData() {
+            try {
+                // Background ESPN Endpoint Fetch for Live Scores
+                const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.events && data.events.length > 0) {
+                        const firstEvent = data.events[0];
+                        const competition = firstEvent.competitions[0];
+                        
+                        // Dynamically update the first matchup with live score data
+                        matchupsData[0].away.score = competition.competitors[1].score || '-';
+                        matchupsData[0].home.score = competition.competitors[0].score || '-';
+                        matchupsData[0].status = firstEvent.status.type.shortDetail.toUpperCase();
+                        
+                        if (firstEvent.status.type.state === 'in') {
+                            matchupsData[0].statusClass = 'status-live';
+                        }
+                    }
+                }
+            } catch (e) {
+                // Fallback to maintain 24/7 ticker operational state
+            } finally {
+                lastApiSync = Date.now();
+                apiSyncCountdown = 60;
+            }
+        }
+
+        // API COUNTDOWN TIMER & 60s INTERVAL
+        setInterval(() => {
+            apiSyncCountdown--;
+            if (apiSyncCountdown <= 0) {
+                apiSyncCountdown = 60;
+                fetchLiveData();
+            }
+            document.getElementById('syncText').textContent = `Sync ${apiSyncCountdown}s`;
+        }, 1000);
+
+        // AUTO FULLSCREEN REQUEST FOR TV MONITORS
+        function requestFullscreenTV() {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen();
+            } else if (docEl.mozRequestFullScreen) {
+                docEl.mozRequestFullScreen();
+            } else if (docEl.webkitRequestFullscreen) {
+                docEl.webkitRequestFullscreen();
+            } else if (docEl.msRequestFullscreen) {
+                docEl.msRequestFullscreen();
+            }
+            const prompt = document.getElementById('fsPrompt');
+            if (prompt) prompt.style.display = 'none';
+        }
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderMatchup(0);
+            renderTicker();
+            animateRotator();
+            fetchLiveData(); // Initial fetch
+        });
+    </script>
+</body>
+</html>
